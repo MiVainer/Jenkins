@@ -1,0 +1,43 @@
+pipeline {
+    agent { label 'MiVainer'}
+    environment {
+    MY_CONTAINER1 = 'miviner/pgadmin:mipgsql'
+    MY_CONTAINER2 = 'miviner/pgadmin:pgadmin'
+}
+
+    stages {
+        stage('Docker pull images') {
+            steps {
+                    sh '''
+                            docker pull ${MY_CONTAINER1}
+                            docker pull ${MY_CONTAINER2}
+                        '''
+
+            }
+        }
+         stage('Docker run') {
+            steps {
+                    sh '''
+                            docker network create -d bridge docker_postgres_network
+                            docker run --rm -d -v postgres_volume:/var/lib/postgresql/data/ -p 5432:5432 --network docker_postgres_network -e POSTGRES_USER=mivainer -e POSTGRES_PASSWORD=sms2851140 -e POSTGRES_DB=mivainer_db --name postgres ${MY_CONTAINER1}
+                            docker run --rm -d -v pgadmin:/var/lib/pgadmin -p 80:80 -p 443:443 --network docker_postgres_network --name pgadmin ${MY_CONTAINER2}
+                            docker exec postgres psql -U postgres -c "CREATE USER mivainer WITH PASSWORD 'sms2851140';"
+                            docker exec postgres psql -U postgres -c "CREATE DATABASE mivainer_db;"
+                        '''
+
+            }
+
+        }
+        stage('Docker rmi') {
+            steps {
+                    sh '''
+                            docker rmi -f ${MY_CONTAINER1}
+                            docker rmi -f ${MY_CONTAINER2}
+
+                        '''
+
+            }
+
+        }
+    }
+}
